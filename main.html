@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Blockchain IoT</title>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #222;
+    }
+
+    .status-box {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 18px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #555;
+    }
+
+    .value {
+      font-size: 26px;
+      font-weight: bold;
+      color: #111;
+    }
+
+    .valid {
+      color: green;
+    }
+
+    .invalid {
+      color: red;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #00ff99;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      min-height: 180px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #222;
+      color: white;
+    }
+
+    .connected {
+      color: green;
+      font-weight: bold;
+    }
+
+    .disconnected {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Dashboard Blockchain IoT</h1>
+
+    <div class="status-box">
+      Status MQTT:
+      <span id="mqttStatus" class="disconnected">Disconnected</span>
+      <br>
+      Topic:
+      <b id="topicText">iot/blockchain/alwi/no-sensor</b>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Device</h3>
+        <div class="value" id="device">-</div>
+      </div>
+
+      <div class="card">
+        <h3>Status Blockchain</h3>
+        <div class="value" id="valid">-</div>
+      </div>
+
+      <div class="card">
+        <h3>Total Block</h3>
+        <div class="value" id="totalBlock">-</div>
+      </div>
+
+      <div class="card">
+        <h3>Block Index</h3>
+        <div class="value" id="blockIndex">-</div>
+      </div>
+
+      <div class="card">
+        <h3>Battery</h3>
+        <div class="value" id="battery">-</div>
+      </div>
+
+      <div class="card">
+        <h3>CPU Load</h3>
+        <div class="value" id="cpuLoad">-</div>
+      </div>
+
+      <div class="card">
+        <h3>Memory Usage</h3>
+        <div class="value" id="memoryUsage">-</div>
+      </div>
+
+      <div class="card">
+        <h3>Status Device</h3>
+        <div class="value" id="deviceStatus">-</div>
+      </div>
+    </div>
+
+    <h2>Informasi Block Terbaru</h2>
+
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Value</th>
+      </tr>
+      <tr>
+        <td>Timestamp</td>
+        <td id="timestamp">-</td>
+      </tr>
+      <tr>
+        <td>Previous Hash</td>
+        <td id="prevHash">-</td>
+      </tr>
+      <tr>
+        <td>Hash</td>
+        <td id="hash">-</td>
+      </tr>
+      <tr>
+        <td>Nonce</td>
+        <td id="nonce">-</td>
+      </tr>
+    </table>
+
+    <h2>Raw JSON</h2>
+    <pre id="rawJson">Menunggu data dari MQTT...</pre>
+  </div>
+
+  <script>
+    const topic = "iot/blockchain/alwi/no-sensor";
+
+    const clientId = "web-dashboard-" + Math.random().toString(16).substring(2, 10);
+
+    const options = {
+      clientId: clientId,
+      clean: true,
+      connectTimeout: 4000,
+      reconnectPeriod: 3000
+    };
+
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt", options);
+
+    client.on("connect", function () {
+      document.getElementById("mqttStatus").innerText = "Connected";
+      document.getElementById("mqttStatus").className = "connected";
+
+      client.subscribe(topic, function (err) {
+        if (!err) {
+          console.log("Subscribe berhasil ke topic:", topic);
+        } else {
+          console.error("Subscribe gagal:", err);
+        }
+      });
+    });
+
+    client.on("reconnect", function () {
+      document.getElementById("mqttStatus").innerText = "Reconnecting...";
+      document.getElementById("mqttStatus").className = "disconnected";
+    });
+
+    client.on("error", function (error) {
+      document.getElementById("mqttStatus").innerText = "Error";
+      document.getElementById("mqttStatus").className = "disconnected";
+      console.error("MQTT Error:", error);
+    });
+
+    client.on("offline", function () {
+      document.getElementById("mqttStatus").innerText = "Offline";
+      document.getElementById("mqttStatus").className = "disconnected";
+    });
+
+    client.on("message", function (receivedTopic, message) {
+      try {
+        const text = message.toString();
+        const data = JSON.parse(text);
+
+        document.getElementById("rawJson").innerText = JSON.stringify(data, null, 2);
+
+        document.getElementById("device").innerText = data.device || "-";
+
+        document.getElementById("valid").innerText = data.valid ? "VALID" : "RUSAK";
+        document.getElementById("valid").className = data.valid ? "value valid" : "value invalid";
+
+        document.getElementById("totalBlock").innerText = data.totalBlock ?? "-";
+
+        if (data.block) {
+          document.getElementById("blockIndex").innerText = data.block.index ?? "-";
+          document.getElementById("timestamp").innerText = data.block.timestamp ?? "-";
+          document.getElementById("prevHash").innerText = data.block.prevHash ?? "-";
+          document.getElementById("hash").innerText = data.block.hash ?? "-";
+          document.getElementById("nonce").innerText = data.block.nonce ?? "-";
+
+          if (data.block.data) {
+            document.getElementById("battery").innerText =
+              data.block.data.battery !== undefined ? data.block.data.battery + "%" : "-";
+
+            document.getElementById("cpuLoad").innerText =
+              data.block.data.cpu_load !== undefined ? data.block.data.cpu_load + "%" : "-";
+
+            document.getElementById("memoryUsage").innerText =
+              data.block.data.memory_usage !== undefined ? data.block.data.memory_usage + "%" : "-";
+
+            document.getElementById("deviceStatus").innerText =
+              data.block.data.status || "-";
+          }
+        }
+
+      } catch (error) {
+        console.error("Gagal parsing JSON:", error);
+        document.getElementById("rawJson").innerText = message.toString();
+      }
+    });
+  </script>
+
+</body>
+</html>
